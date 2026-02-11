@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>লাইভ ভোটিং - Enhanced</title>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+// 🔹 Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyD5aXDPB9YLfWM5qTI-iB5_7dpDLowICqQ",
+  authDomain: "voting-3719c.firebaseapp.com",
+  databaseURL: "https://voting-3719c-default-rtdb.firebaseio.com",
+  projectId: "voting-3719c",
+  storageBucket: "voting-3719c.firebasestorage.app",
+  messagingSenderId: "153993568048",
+  appId: "1:153993568048:web:3ec135edaa6395153eb2f5",
+  measurementId: "G-4WGS6HTFD6"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Realtime Database references
+const option1Ref = ref(db,'votes/option1');
+const option2Ref = ref(db,'votes/option2');
+
+// এক ইউজার এক ভোট (LocalStorage)
+const voted = localStorage.getItem("voted");
+
+// Confetti function
+function confetti(){
+  const colors=['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF6EC7'];
+  for(let i=0;i<150;i++){
+    const div=document.createElement('div');
+    div.className='confetti';
+    div.style.background=colors[Math.floor(Math.random()*colors.length)];
+    div.style.left=Math.random()*100+'%';
+    div.style.animationDuration=(Math.random()*3+2)+'s';
+    div.style.transform='rotate('+Math.random()*360+'deg)';
+    document.body.appendChild(div);
+    setTimeout(()=>div.remove(),4000);
+  }
+}
+
+// ভোট ফাংশন
+window.vote = function(option){
+  if(voted){
+    alert("আপনি ইতিমধ্যেই ভোট দিয়েছেন!");
+    return;
+  }
+  const voteRef = ref(db,'votes/'+option);
+  runTransaction(voteRef, current => (current||0)+1);
+  localStorage.setItem("voted","true");
+
+  const emojiEl = document.getElementById(option+'-emoji');
+  emojiEl.classList.add('pop');
+  setTimeout(()=>emojiEl.classList.remove('pop'),300);
+}
+
+// UI আপডেট
+function updateUI(count1,count2){
+  const total = count1 + count2;
+  const percent1 = total ? ((count1/total)*100).toFixed(1) : 0;
+  const percent2 = total ? ((count2/total)*100).toFixed(1) : 0;
+
+  document.getElementById("count1").innerText = count1;
+  document.getElementById("count2").innerText = count2;
+  document.getElementById("percent1").innerText = percent1+"%";
+  document.getElementById("percent2").innerText = percent2+"%";
+
+  document.getElementById("bar1").style.width = percent1+"%";
+  document.getElementById("bar2").style.width = percent2+"%";
+
+  const winnerEl = document.getElementById("winner");
+  if(total===0) winnerEl.innerText="";
+  else if(count1>count2) { winnerEl.innerText="🌾 ধানের শীষ এগিয়ে!"; confetti();}
+  else if(count2>count1) { winnerEl.innerText="⚖️ দাঁড়িপাল্লা এগিয়ে!"; confetti();}
+  else winnerEl.innerText="🤝 সমান ভোট!";
+}
+
+// লাইভ Database listener
+let count1=0,count2=0;
+onValue(option1Ref, snap=>{count1=snap.val()||0; updateUI(count1,count2);});
+onValue(option2Ref, snap=>{count2=snap.val()||0; updateUI(count1,count2);});
+
+</script>
+
+<style>
+body{
+  margin:0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg,#f5f7fa,#c3cfe2);
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  min-height:100vh;
+  padding-top:25px;
+}
+
+.container{
+  width:95%;
+  max-width:420px;
+}
+
+.card{
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  border-radius:20px;
+  padding:25px;
+  margin-bottom:15px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.15);
+  transition:transform 0.3s ease;
+  position:relative;
+  overflow:hidden;
+}
+
+.card:hover{transform:translateY(-4px);}
+
+.emoji{
+  font-size:60px;
+  display:inline-block;
+  transition:transform 0.2s ease;
+}
+
+.pop{
+  transform: scale(1.5) rotate(-10deg);
+}
+
+h3{
+  margin:12px 0;
+  font-size:20px;
+  color:#050505;
+}
+
+button{
+  padding:10px 25px;
+  border:none;
+  border-radius:25px;
+  background:#1877f2;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+  margin-top:12px;
+  transition:0.3s;
+}
+
+button:hover{background:#165ec9;}
+
+.progress{
+  background:#e4e6eb;
+  border-radius:20px;
+  height:12px;
+  margin-top:12px;
+  overflow:hidden;
+}
+
+.bar{
+  height:100%;
+  width:0%;
+  background:#1877f2;
+  transition:width 0.3s ease;
+}
+
+.count{
+  font-weight:bold;
+  margin-top:6px;
+  color:#050505;
+}
+
+#winner{
+  text-align:center;
+  font-size:22px;
+  font-weight:bold;
+  margin-top:18px;
+  color:#ffb74d;
+  text-shadow:1px 1px 5px rgba(0,0,0,0.2);
+}
+
+/* Confetti */
+.confetti{
+  position:fixed;
+  width:8px;
+  height:8px;
+  top:0;
+  z-index:9999;
+  pointer-events:none;
+  animation-name:fall;
+  animation-timing-function:linear;
+}
+
+@keyframes fall{
+  0%{transform:translateY(0);}
+  100%{transform:translateY(100vh);}
+}
+
+@media(max-width:420px){
+  .emoji{font-size:50px;}
+  h3{font-size:18px;}
+  button{font-size:14px;padding:8px 22px;}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="card">
+    <div id="option1-emoji" class="emoji">🌾</div>
+    <h3>ধানের শীষ</h3>
+    <button onclick="vote('option1')">ভোট দিন</button>
+    <div class="count"><span id="count1">0</span> ভোট (<span id="percent1">0%</span>)</div>
+    <div class="progress"><div id="bar1" class="bar"></div></div>
+  </div>
+
+  <div class="card">
+    <div id="option2-emoji" class="emoji">⚖️</div>
+    <h3>দাঁড়িপাল্লা</h3>
+    <button onclick="vote('option2')">ভোট দিন</button>
+    <div class="count"><span id="count2">0</span> ভোট (<span id="percent2">0%</span>)</div>
+    <div class="progress"><div id="bar2" class="bar"></div></div>
+  </div>
+
+  <div id="winner"></div>
+
+</div>
+</body>
+</html>
